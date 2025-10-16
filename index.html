@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA-Grade Asteroid Impact Simulator</title>
+    <!-- Accessibility and Enhancement Meta Tags -->
+    <meta name="description" content="Interactive NASA-grade asteroid impact simulator with real USGS data, 3D visualizations, and advanced mitigation strategies">
+    <meta name="keywords" content="asteroid, impact, simulation, NASA, USGS, space, defense, mitigation">
+    <meta name="author" content="NASA Asteroid Impact Simulator">
+    <meta name="theme-color" content="#0f3460">
+    <!-- Accessibility Features -->
+    <meta name="color-scheme" content="dark light">
+    <meta name="prefers-reduced-motion" content="reduce">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/TextureLoader.min.js"></script>
+    <!-- USGS Data Integration -->
+    <script src="usgs-data.js"></script>
+    
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <link rel="stylesheet" href="styles-1.css">
+    <!-- Leaflet 2D Map CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+    <!-- Recording indicator and toast notifications -->
+    <div id="recordingIndicator" class="recording-indicator" style="display:none">
+        <span class="dot"></span> Recording...
+    </div>
+    <div id="toast" class="toast" style="display:none"></div>
+    <!-- Audio unlock prompt (some browsers require a user gesture) -->
+    <div id="audioUnlockPrompt" class="audio-unlock" style="display:none">
+        🔈 Click anywhere to enable narration audio
+    </div>
+    <div class="loading" id="loading">
+        <div class="nasa-logo"></div>
+        <div class="spinner"></div>
+        <h3>Initializing NASA-Grade Asteroid Impact Simulator</h3>
+        <p>Loading high-resolution Earth model, NASA asteroid database, and advanced physics engine</p>
+    </div>
+    <div class="countdown" id="countdown">
+        <div class="countdown-number" id="countdownNumber">3</div>
+        <div class="countdown-text">IMPACT IMMINENT</div>
+    </div>
+    <div class="container hidden" id="mainContainer">
+        <div class="controls-panel" id="controlsPanel">
+            <div class="header">
+                <h1>☄️ NASA Asteroid Impact Simulator</h1>
+                <p>Advanced 3D Physics Simulation with Real NASA Data</p>
+            </div>
+            <div class="section">
+                <div class="sound-controls">
+                    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊 Sound ON</button>
+                    <label for="volumeSlider">Volume</label>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70" oninput="setVolume(this.value)" aria-label="Volume control">
+                </div>
+            </div>
+            <div class="section asteroid-section">
+                <h3>NASA Asteroid Database</h3>
+                <div class="asteroid-preview-container">
+                    <canvas id="asteroidPreview" width="120" height="120"></canvas>
+                </div>
+                <div class="asteroid-navigation">
+                    <button class="nav-btn" id="prevBtn" onclick="previousAsteroid()">‹</button>
+                    <div class="asteroid-info">
+                        <div class="asteroid-name" id="currentAsteroidName">Chicxulub Impactor</div>
+                        <div class="asteroid-details" id="currentAsteroidDetails">10-15km • 20 km/s • Extinction Event</div>
+                        <button class="btn secondary discover-btn" onclick="showAsteroidStory()">🔍 Discover Story</button>
+                    </div>
+                    <button class="nav-btn" id="nextBtn" onclick="nextAsteroid()">›</button>
+                </div>
+                <div class="custom-asteroid-section">
+                    <button class="btn primary custom-asteroid-btn" onclick="openCustomAsteroidCreator()">🛸 Create Your Own Asteroid</button>
+                    <button class="btn secondary city-zoom-btn" onclick="createCityZoomDamage()">🏙️ Zoom to City Damage</button>
+                    <button class="btn secondary my-city-btn" onclick="showMyCityImpact()">🏠 What if it hits my city?</button>
+                </div>
+                <div class="control-group">
+                    <label for="diameter">Diameter (meters)</label>
+                    <div class="slider-container">
+                        <input type="range" id="diameter" min="1" max="15000" value="12000" oninput="updateAsteroid()" aria-label="Asteroid diameter in meters">
+                        <span class="value-display" id="diameterValue">12km</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="velocity">Velocity (km/s)</label>
+                    <div class="slider-container">
+                        <input type="range" id="velocity" min="11" max="72" value="20" oninput="updateAsteroid()" aria-label="Asteroid velocity in kilometers per second">
+                        <span class="value-display" id="velocityValue">20 km/s</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="angle">Impact Angle (degrees from horizontal)</label>
+                    <div class="slider-container">
+                        <input type="range" id="angle" min="15" max="90" value="45" oninput="updateAsteroid()" aria-label="Impact angle in degrees from horizontal">
+                        <span class="value-display" id="angleValue">45°</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="density">Density (kg/m³)</label>
+                    <div class="slider-container">
+                        <input type="range" id="density" min="500" max="8000" value="2700" oninput="updateAsteroid()" aria-label="Asteroid density in kilograms per cubic meter">
+                        <span class="value-display" id="densityValue">2700</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="composition">Composition Type</label>
+                    <select id="composition" onchange="updateComposition()" aria-label="Select asteroid composition type">
+                        <option value="rocky">Rocky (S-type) - 2700 kg/m³</option>
+                        <option value="metallic">Metallic (M-type) - 7800 kg/m³</option>
+                        <option value="carbonaceous">Carbonaceous (C-type) - 1300 kg/m³</option>
+                        <option value="icy">Icy Comet - 900 kg/m³</option>
+                        <option value="custom">Custom Density</option>
+                    </select>
+                </div>
+                <!-- NASA API Data Section -->
+                <div class="nasa-data-section hidden" id="nasaDataSection">
+                    <h4>NASA NEO Data</h4>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Designation:</span>
+                        <span class="nasa-data-value" id="nasaDesignation">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Orbit ID:</span>
+                        <span class="nasa-data-value" id="nasaOrbitId">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">First Observed:</span>
+                        <span class="nasa-data-value" id="nasaFirstObserved">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Potentially Hazardous:</span>
+                        <span class="nasa-data-value" id="nasaHazardous">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Orbit Class:</span>
+                        <span class="nasa-data-value" id="nasaOrbitClass">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Close Approach Date:</span>
+                        <span class="nasa-data-value" id="nasaCloseApproach">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Relative Velocity:</span>
+                        <span class="nasa-data-value" id="nasaRelativeVelocity">N/A</span>
+                    </div>
+                    <div class="nasa-data-row">
+                        <span class="nasa-data-label">Miss Distance:</span>
+                        <span class="nasa-data-value" id="nasaMissDistance">N/A</span>
+                    </div>
+                    <div class="api-status" id="apiStatus">API: Not loaded</div>
+                </div>
+            </div>
+            <div class="section impact-section">
+                <h3>Impact Location</h3>
+                <div class="control-group">
+                    <label for="targetLocation">Quick Select</label>
+                    <select id="targetLocation" onchange="setTargetLocation()" aria-label="Select impact location">
+                        <option value="custom">Custom Location</option>
+                        <optgroup label="Major Cities">
+                            <option value="newyork">New York City, USA</option>
+                            <option value="london">London, UK</option>
+                            <option value="tokyo">Tokyo, Japan</option>
+                            <option value="mumbai">Mumbai, India</option>
+                            <option value="shanghai">Shanghai, China</option>
+                            <option value="saopaulo">São Paulo, Brazil</option>
+                            <option value="cairo">Cairo, Egypt</option>
+                            <option value="moscow">Moscow, Russia</option>
+                            <option value="sydney">Sydney, Australia</option>
+                            <option value="lagos">Lagos, Nigeria</option>
+                        </optgroup>
+                        <optgroup label="Capitals">
+                            <option value="washington">Washington D.C., USA</option>
+                            <option value="paris">Paris, France</option>
+                            <option value="berlin">Berlin, Germany</option>
+                            <option value="rome">Rome, Italy</option>
+                            <option value="madrid">Madrid, Spain</option>
+                            <option value="beijing">Beijing, China</option>
+                            <option value="newdelhi">New Delhi, India</option>
+                            <option value="brasilia">Brasília, Brazil</option>
+                            <option value="ottawa">Ottawa, Canada</option>
+                            <option value="canberra">Canberra, Australia</option>
+                        </optgroup>
+                        <optgroup label="Remote Areas">
+                            <option value="ocean_pacific">Pacific Ocean</option>
+                            <option value="ocean_atlantic">Atlantic Ocean</option>
+                            <option value="sahara">Sahara Desert</option>
+                            <option value="antarctica">Antarctica</option>
+                            <option value="siberia">Siberian Wilderness</option>
+                            <option value="amazon">Amazon Rainforest</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Current Coordinates</label>
+                    <div class="coordinates" id="coordinates">23.8859°N, 2.5085°E</div>
+                </div>
+                <button class="btn secondary" onclick="randomizeImpact()">🎲 Random Impact Site</button>
+                <!-- 2D Map container -->
+                <div class="map2d-container">
+                    <div id="map2d" aria-label="2D Earth Map"></div>
+                    <div class="map-hint">Click the map to set the impact point. Use mouse wheel or pinch to zoom.</div>
+                </div>
+            </div>
+            <div class="section simulation-section">
+                <h3>Physics Analysis</h3>
+                <div class="physics-details">
+                    <div class="physics-item">
+                        <span class="physics-label">Mass:</span>
+                        <span class="physics-value" id="asteroidMass">0 kg</span>
+                    </div>
+                    <div class="physics-item">
+                        <span class="physics-label">Kinetic Energy:</span>
+                        <span class="physics-value" id="kineticEnergy">0 J</span>
+                    </div>
+                    <div class="physics-item">
+                        <span class="physics-label">TNT Equivalent:</span>
+                        <span class="physics-value" id="tntEquivalent">0 MT</span>
+                    </div>
+                    <div class="physics-item">
+                        <span class="physics-label">Momentum:</span>
+                        <span class="physics-value" id="momentum">0 kg⋅m/s</span>
+                    </div>
+                </div>
+                <div class="detailed-stats">
+                    <div class="detailed-stat-item stat-fireball">
+                        <span>Fireball Radius</span>
+                        <span id="fireballRadius">0 km</span>
+                    </div>
+                    <div class="detailed-stat-item stat-airblast">
+                        <span>Air Blast (20 psi)</span>
+                        <span id="airblastRadius">0 km</span>
+                    </div>
+                    <div class="detailed-stat-item stat-thermal">
+                        <span>Thermal Radiation</span>
+                        <span id="thermalRadius">0 km</span>
+                    </div>
+                    <div class="detailed-stat-item stat-seismic">
+                        <span>Seismic Effects</span>
+                        <span id="seismicRadius">0 km</span>
+                    </div>
+                    <div class="detailed-stat-item stat-crater">
+                        <span>Crater Diameter</span>
+                        <span id="craterDiameter">0 km</span>
+                    </div>
+                </div>
+            </div>
+            <!-- AI Risk Advisor Section -->
+            <div class="section ai-advisor-section">
+                <h3>🤖 AI Risk Advisor</h3>
+                <div class="ai-advisor" id="aiAdvisor">
+                    <div class="thinking-animation hidden" id="aiThinking">
+                        <div class="thinking-dot"></div>
+                        <div class="thinking-dot"></div>
+                        <div class="thinking-dot"></div>
+                    </div>
+                    <div id="aiAnalysisResult">
+                        <div class="ai-recommendation">
+                            <div class="ai-recommendation-header">
+                                <div class="recommendation-icon">💡</div>
+                                <div class="recommendation-title">Recommended Strategy</div>
+                            </div>
+                            <div class="recommendation-details" id="aiRecommendation">
+                                Adjust asteroid parameters to get AI defense recommendations
+                            </div>
+                            <div class="recommendation-stats">
+                                <div class="recommendation-stat">
+                                    <div class="recommendation-stat-label">Success Probability</div>
+                                    <div class="recommendation-stat-value" id="aiSuccessProbability">-</div>
+                                </div>
+                                <div class="recommendation-stat">
+                                    <div class="recommendation-stat-label">Estimated Cost</div>
+                                    <div class="recommendation-stat-value" id="aiEstimatedCost">-</div>
+                                </div>
+                                <div class="recommendation-stat">
+                                    <div class="recommendation-stat-label">Time Required</div>
+                                    <div class="recommendation-stat-value" id="aiTimeRequired">-</div>
+                                </div>
+                                <div class="recommendation-stat">
+                                    <div class="recommendation-stat-label">Risk Level</div>
+                                    <div class="recommendation-stat-value" id="aiRiskLevel">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ai-analysis">
+                            <div class="ai-analysis-title">Strategic Analysis</div>
+                            <div class="ai-analysis-text" id="aiAnalysisText">
+                                The AI advisor will provide a detailed analysis of the threat and recommended mitigation strategy based on the asteroid's size, velocity, composition, and impact location.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section assessment-section results-section">
+                <h3>Impact Assessment</h3>
+                <div class="assessment-grid">
+                    <div class="assessment-item threat-level">
+                        <div class="assessment-label">Threat Level</div>
+                        <div class="assessment-value" id="threatLevel">EXTREME</div>
+                    </div>
+                    <div class="assessment-item casualty-estimate">
+                        <div class="assessment-label">Casualty Estimate</div>
+                        <div class="assessment-value" id="casualtyEstimate">0</div>
+                    </div>
+                    <div class="assessment-item damage-radius">
+                        <div class="assessment-label">Damage Radius</div>
+                        <div class="assessment-value" id="damageRadius">0 km</div>
+                    </div>
+                    <div class="assessment-item recovery-time">
+                        <div class="assessment-label">Recovery Time</div>
+                        <div class="assessment-value" id="recoveryTime">Unknown</div>
+                    </div>
+                </div>
+            </div>
+            <div class="section sequence-section results-section">
+                <h3>Impact Sequence</h3>
+                <div class="sequence-timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker">T-10s</div>
+                        <div class="timeline-content">Atmospheric Entry</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker">T-5s</div>
+                        <div class="timeline-content">Plasma Formation</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker">T-0s</div>
+                        <div class="timeline-content">Ground Impact</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker">T+1s</div>
+                        <div class="timeline-content">Fireball Expansion</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker">T+30s</div>
+                        <div class="timeline-content">Shockwave Arrival</div>
+                    </div>
+                </div>
+            </div>
+            <div class="section mitigation-section results-section">
+                <h3>Mitigation Scenarios</h3>
+                <div class="mitigation-options">
+                    <div class="mitigation-option" onclick="selectMitigation('deflection')">
+                        <div class="mitigation-icon">🚀</div>
+                        <div class="mitigation-title">Kinetic Deflection</div>
+                        <div class="mitigation-desc">Change trajectory using spacecraft impact</div>
+                        <div class="mitigation-success" id="deflectionSuccess">85% Success Rate</div>
+                    </div>
+                    <div class="mitigation-option" onclick="selectMitigation('nuclear')">
+                        <div class="mitigation-icon">💥</div>
+                        <div class="mitigation-title">Nuclear Disruption</div>
+                        <div class="mitigation-desc">Fragment asteroid with nuclear device</div>
+                        <div class="mitigation-success" id="nuclearSuccess">65% Success Rate</div>
+                    </div>
+                    <div class="mitigation-option" onclick="selectMitigation('evacuation')">
+                        <div class="mitigation-icon">🏃</div>
+                        <div class="mitigation-title">Mass Evacuation</div>
+                        <div class="mitigation-desc">Evacuate population from impact zone</div>
+                        <div class="mitigation-success" id="evacuationSuccess">95% Casualty Reduction</div>
+                    </div>
+                    <div class="mitigation-option" onclick="selectMitigation('shelter')">
+                        <div class="mitigation-icon">🏠</div>
+                        <div class="mitigation-title">Underground Shelters</div>
+                        <div class="mitigation-desc">Protect population in reinforced bunkers</div>
+                        <div class="mitigation-success" id="shelterSuccess">70% Casualty Reduction</div>
+                    </div>
+                </div>
+                <div class="selected-mitigation hidden" id="selectedMitigation">
+                    <h4 id="mitigationTitle">Selected Strategy</h4>
+                    <p id="mitigationDetails">Strategy details will appear here</p>
+                    <div class="mitigation-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Cost:</span>
+                            <span class="stat-value" id="mitigationCost">$0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Time Required:</span>
+                            <span class="stat-value" id="mitigationTime">0 years</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Effectiveness:</span>
+                            <span class="stat-value" id="mitigationEffectiveness">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section launch-section">
+                <button class="btn launch" onclick="launchAsteroid()" id="launchBtn">
+                    🚀 LAUNCH ASTEROID
+                </button>
+                <button class="btn secondary" onclick="simulateImpact()">💥 Immediate Impact</button>
+                <a id="downloadRecordingBtn" class="btn secondary" href="#" download style="display:none">⬇️ Download Recording</a>
+                <button class="btn secondary" onclick="resetSimulation()">🔄 Reset Simulation</button>
+                <button class="btn secondary" onclick="toggleCinematicMode()" id="cinematicBtn">🎬 Cinematic Mode</button>
+                <button class="btn secondary" onclick="fetchNASAData()" id="nasaDataBtn">🛰️ Refresh NASA Data</button>
+                <button class="btn secondary" onclick="toggleGamificationMode()" id="gamificationBtn">🎮 Defend Earth Mode</button>
+                <button class="btn secondary" onclick="showSocialSharing()" id="socialBtn">📤 Share Results</button>
+            </div>
+        </div>
+        <div class="main-view">
+            <canvas id="earthCanvas"></canvas>
+            <!-- On-canvas recording icon -->
+            <div id="canvasRecordingIcon" class="canvas-recording-icon" style="display:none">
+                <span class="dot"></span>
+                <span class="label">REC</span>
+            </div>
+            <div class="hud">
+                <div class="hud-item">
+                    <div class="hud-value" id="targetName">Sahara Desert</div>
+                    <div class="hud-label">Target Location</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-value" id="hudCoordinates">23.8859°N, 2.5085°</div>
+                    <div class="hud-label">Coordinates</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-value" id="targetPopulation">1,000</div>
+                    <div class="hud-label">Population</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-value" id="hudEnvironment">Desert</div>
+                    <div class="hud-label">Environment</div>
+                </div>
+            </div>
+        </div>
+        <div class="impact-results-panel" id="impactResultsPanel">
+            <button class="close-results" onclick="closeImpactResults()">×</button>
+            <div class="header">
+                <h1>📊 Impact Analysis</h1>
+                <p>Detailed Damage Assessment</p>
+                <button class="btn secondary" onclick="startAvatarNarrationOnce()">🔊 Read Analysis</button>
+            </div>
+            <div class="section">
+                <h3>Immediate Effects</h3>
+                <div class="impact-list" id="immediateEffects">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            <div class="section">
+                <h3>Secondary Effects</h3>
+                <div class="impact-list" id="secondaryEffects">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            <div class="section">
+                <h3>Long-term Consequences</h3>
+                <div class="impact-list" id="longTermEffects">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            <div class="section">
+                <h3>Global Impact</h3>
+                <div class="impact-list" id="globalEffects">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Cinematic Mode Overlay -->
+    <div class="cinematic-overlay" id="cinematicOverlay">
+        <div class="cinematic-title" id="cinematicTitle">ASTEROID IMPACT SEQUENCE</div>
+        <div class="cinematic-subtitle" id="cinematicSubtitle">Preparing for Impact...</div>
+        <div class="cinematic-progress">
+            <div class="cinematic-progress-bar" id="cinematicProgressBar"></div>
+        </div>
+    </div>
+    <!-- Journey Phase Overlays -->
+    <div class="journey-phase" id="journeyPhase1">
+        <h2>🌌 Deep Space Approach</h2>
+        <p>The asteroid travels through the void of space at incredible velocity, its surface scarred by millions of years of cosmic bombardment.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase2">
+        <h2>🌍 Earth's Gravity Well</h2>
+        <p>As the asteroid enters Earth's gravitational influence, its trajectory becomes fixed. There is no turning back now.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase3">
+        <h2>🔥 Atmospheric Entry</h2>
+        <p>The asteroid slams into Earth's atmosphere at hypersonic speeds, creating a brilliant fireball visible from space.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase4">
+        <h2>⚡ Plasma Formation</h2>
+        <p>Extreme compression and heating create a plasma sheath around the asteroid as it tears through the atmosphere.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase5">
+        <h2>💥 Ground Impact</h2>
+        <p>The moment of impact releases energy equivalent to millions of nuclear weapons in a fraction of a second.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase6">
+        <h2>🌋 Fireball Expansion</h2>
+        <p>A massive fireball expands outward, vaporizing everything in its path and creating temperatures hotter than the Sun's surface.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase7">
+        <h2>🌊 Shockwave Propagation</h2>
+        <p>Devastating shockwaves race outward at supersonic speeds, flattening buildings and reshaping the landscape.</p>
+    </div>
+    <div class="journey-phase" id="journeyPhase8">
+        <h2>🌪️ Global Consequences</h2>
+        <p>The impact's effects ripple across the planet, potentially altering climate patterns and affecting life worldwide.</p>
+    </div>
+    <div class="nasa-badge">NASA DATA INTEGRATION v2.1</div>
+    
+    <!-- Accessibility Features -->
+    <div class="accessibility-panel" id="accessibilityPanel">
+        <h3>♿ Accessibility Features</h3>
+        <div class="accessibility-controls">
+            <button class="accessibility-btn" onclick="toggleHighContrast()" aria-label="Toggle high contrast mode">
+                <span class="icon">🔍</span> High Contrast
+            </button>
+            <button class="accessibility-btn" onclick="toggleReducedMotion()" aria-label="Toggle reduced motion">
+                <span class="icon">⏸️</span> Reduce Motion
+            </button>
+            <button class="accessibility-btn" onclick="toggleColorblindMode()" aria-label="Toggle colorblind-friendly mode">
+                <span class="icon">🎨</span> Colorblind Mode
+            </button>
+            <button class="accessibility-btn" onclick="showKeyboardShortcuts()" aria-label="Show keyboard shortcuts">
+                <span class="icon">⌨️</span> Keyboard Help
+            </button>
+        </div>
+    </div>
+    
+    <!-- Keyboard Shortcuts Help -->
+    <div class="keyboard-shortcuts-modal" id="keyboardShortcutsModal">
+        <div class="modal-content">
+            <h3>⌨️ Keyboard Shortcuts</h3>
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <kbd>Space</kbd>
+                    <span>Launch asteroid simulation</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>R</kbd>
+                    <span>Reset simulation</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>M</kbd>
+                    <span>Toggle 2D map</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Esc</kbd>
+                    <span>Close panels</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Tab</kbd>
+                    <span>Navigate controls</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Enter</kbd>
+                    <span>Activate selected control</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>G</kbd>
+                    <span>Toggle gamification mode</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>H</kbd>
+                    <span>Show/hide help</span>
+                </div>
+            </div>
+            <button class="btn" onclick="closeKeyboardShortcuts()">Close</button>
+        </div>
+    </div>
+    
+    <!-- Mobile Toggle Button -->
+    <button class="mobile-toggle" id="mobileToggle" onclick="toggleMobilePanel()" aria-label="Toggle mobile panel">
+        <span class="hamburger">☰</span>
+    </button>
+    
+    <!-- Gamification Mode UI -->
+    <div class="gamification-panel" id="gamificationPanel" style="display: none;">
+        <div class="game-header">
+            <h2>🛡️ Defend Earth Mode</h2>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="label">Score:</span>
+                    <span class="value" id="gameScore">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Level:</span>
+                    <span class="value" id="gameLevel">1</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Time:</span>
+                    <span class="value" id="gameTime">300</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-content">
+            <div class="threat-asteroid" id="threatAsteroid">
+                <h3>⚠️ Incoming Threat Detected!</h3>
+                <div class="asteroid-info" id="threatAsteroidInfo">
+                    <!-- Dynamic asteroid threat info -->
+                </div>
+            </div>
+            <div class="deflection-options" id="deflectionOptions">
+                <h4>Choose Defense Strategy:</h4>
+                <div class="deflection-grid">
+                    <button class="deflection-btn" onclick="selectDeflectionStrategy('kinetic')" data-cost="1000" data-effectiveness="0.8" data-time="50">
+                        <div class="deflection-icon">🚀</div>
+                        <div class="deflection-name">Kinetic Impactor</div>
+                        <div class="deflection-cost">Cost: $1,000</div>
+                        <div class="deflection-effectiveness">Effectiveness: 80%</div>
+                    </button>
+                    <button class="deflection-btn" onclick="selectDeflectionStrategy('gravity')" data-cost="2000" data-effectiveness="0.6" data-time="100">
+                        <div class="deflection-icon">🪐</div>
+                        <div class="deflection-name">Gravity Tractor</div>
+                        <div class="deflection-cost">Cost: $2,000</div>
+                        <div class="deflection-effectiveness">Effectiveness: 60%</div>
+                    </button>
+                    <button class="deflection-btn" onclick="selectDeflectionStrategy('nuclear')" data-cost="5000" data-effectiveness="0.9" data-time="30">
+                        <div class="deflection-icon">💥</div>
+                        <div class="deflection-name">Nuclear Disruption</div>
+                        <div class="deflection-cost">Cost: $5,000</div>
+                        <div class="deflection-effectiveness">Effectiveness: 90%</div>
+                    </button>
+                    <button class="deflection-btn" onclick="selectDeflectionStrategy('laser')" data-cost="3000" data-effectiveness="0.7" data-time="60">
+                        <div class="deflection-icon">🔴</div>
+                        <div class="deflection-name">Laser Ablation</div>
+                        <div class="deflection-cost">Cost: $3,000</div>
+                        <div class="deflection-effectiveness">Effectiveness: 70%</div>
+                    </button>
+                </div>
+            </div>
+            <div class="game-results" id="gameResults" style="display: none;">
+                <h3 id="gameResultTitle">Mission Result</h3>
+                <p id="gameResultText">Result details...</p>
+                <button class="btn" onclick="nextGameLevel()">Next Level</button>
+                <button class="btn secondary" onclick="exitGamificationMode()">Exit Game</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Social Sharing Modal -->
+    <div class="social-sharing-modal" id="socialSharingModal" style="display: none;">
+        <div class="modal-content">
+            <h3>📤 Share Your Simulation</h3>
+            <div class="sharing-options">
+                <button class="share-btn" onclick="shareToTwitter()">
+                    <span class="icon">🐦</span> Twitter
+                </button>
+                <button class="share-btn" onclick="shareToFacebook()">
+                    <span class="icon">📘</span> Facebook
+                </button>
+                <button class="share-btn" onclick="shareToLinkedIn()">
+                    <span class="icon">💼</span> LinkedIn
+                </button>
+                <button class="share-btn" onclick="copyToClipboard()">
+                    <span class="icon">📋</span> Copy Link
+                </button>
+            </div>
+            <div class="export-options">
+                <h4>Export Results:</h4>
+                <button class="export-btn" onclick="exportToPDF()">
+                    <span class="icon">📄</span> PDF Report
+                </button>
+                <button class="export-btn" onclick="exportToJSON()">
+                    <span class="icon">📊</span> JSON Data
+                </button>
+                <button class="export-btn" onclick="exportToCSV()">
+                    <span class="icon">📈</span> CSV Data
+                </button>
+            </div>
+            <button class="btn secondary" onclick="closeSocialSharing()">Close</button>
+        </div>
+    </div>
+    
+    <!-- AI Avatar Container -->
+    <div class="ai-avatar-container" id="aiAvatar">
+        <div class="copilot-bot" id="copilotBot">
+            <svg id="copilotSVG" viewBox="0 0 320 320" width="220" height="220">
+                <!-- ********* DEFINITIONS ********* -->
+                <defs>
+                    <radialGradient id="gHead" cx="35%" cy="30%" r="80%">
+                        <stop offset="0%" stop-color="#7fb2ff"/>
+                        <stop offset="40%" stop-color="#4e82ff"/>
+                        <stop offset="100%" stop-color="#2a1f7c"/>
+                    </radialGradient>
+                    <radialGradient id="gPod" cx="30%" cy="30%" r="80%">
+                        <stop offset="0%" stop-color="#c68cff"/>
+                        <stop offset="70%" stop-color="#7d44e6"/>
+                    </radialGradient>
+                    <linearGradient id="gGoggle" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#627bff"/>
+                        <stop offset="100%" stop-color="#3a48d1"/>
+                    </linearGradient>
+                    <linearGradient id="gEye" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#00ffff"/>
+                        <stop offset="100%" stop-color="#00aaff"/>
+                    </linearGradient>
+                    <radialGradient id="gChin" cx="50%" cy="0%" r="80%">
+                        <stop offset="0%" stop-color="#3845c9"/>
+                        <stop offset="100%" stop-color="#221e7b"/>
+                    </radialGradient>
+                    <filter id="fGlow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="12" result="b"/>
+                        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                    <filter id="fEyeGlow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="b"/>
+                        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
+
+                <!-- ********* BODY ********* -->
+                <!-- side pods -->
+                <ellipse id="podL" cx="70" cy="150" rx="34" ry="44" fill="url(#gPod)" filter="url(#fGlow)"/>
+                <ellipse id="podR" cx="250" cy="150" rx="34" ry="44" fill="url(#gPod)" filter="url(#fGlow)"/>
+
+                <!-- head -->
+                <circle id="head" cx="160" cy="150" r="105" fill="url(#gHead)" filter="url(#fGlow)"/>
+                <!-- glossy spot -->
+                <circle cx="120" cy="115" r="40" fill="white" opacity="0.25"/>
+                <circle cx="125" cy="120" r="26" fill="white" opacity="0.18"/>
+
+                <!-- goggles -->
+                <rect id="goggles" x="90" y="110" width="140" height="70" rx="35" fill="url(#gGoggle)"/>
+                <g id="visor" transform="translate(96,116)">
+                    <rect width="128" height="58" rx="29" fill="#0a0f2a"/>
+                    <!-- eyes -->
+                    <g id="eyes" transform="translate(0,0)">
+                        <rect id="eyeL" x="28" y="9" width="22" height="40" rx="11" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                        <rect id="eyeR" x="78" y="9" width="22" height="40" rx="11" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                        <!-- scan line -->
+                        <rect id="scan" x="0" y="5" width="128" height="6" rx="3" fill="white" opacity="0.06"/>
+                    </g>
+                </g>
+
+                <!-- ================== MOUTH ================== -->
+                <path id="mouthSmile" d="M130 195 Q160 210 190 195" stroke="#00e6ff" stroke-width="4" fill="none" opacity="0.9"/>
+                
+                <!-- ================== HANDS ================== -->
+                <g id="hands">
+                    <g id="handL" transform="translate(58,168)">
+                        <circle r="12" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                        <rect x="-3" y="10" width="6" height="10" rx="3" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                    </g>
+                    <g id="handR" transform="translate(262,168)">
+                        <circle r="12" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                        <rect x="-3" y="10" width="6" height="10" rx="3" fill="url(#gEye)" filter="url(#fEyeGlow)"/>
+                    </g>
+                </g>
+
+                <!-- chin -->
+                <ellipse id="chin" cx="160" cy="220" rx="44" ry="22" fill="url(#gChin)" filter="url(#fGlow)"/>
+            </svg>
+
+            <!-- Hover platform -->
+            <div class="copilot-platform"></div>
+
+            <!-- Docked controls -->
+            <div class="copilot-controls" id="copilotControls">
+                <button class="ai-btn neon" data-tip="Toggle Audio" id="btnAudio">🔊 Audio</button>
+                <button class="ai-btn neon" data-tip="Skip Narration" id="btnSkip">⏭️ Skip</button>
+                <button class="ai-btn neon" data-tip="Change Language" id="btnLang">🌐 Language</button>
+            </div>
+        </div>
+        
+        <div class="ai-status" id="aiStatus">Ready to analyze</div>
+        <div class="ai-controls">
+            <button class="ai-btn" onclick="toggleAudio()">🔊 Audio ON</button>
+            <button class="ai-btn" onclick="exportToPDF()">💾 Save as PDF</button>
+            <button class="ai-btn" onclick="testAvatarVoice()">🗣️ Test Voice</button>
+            <button class="ai-btn" onclick="avatarVolumeDown()">🔉 Vol -</button>
+            <button class="ai-btn" onclick="avatarVolumeUp()">🔊 Vol +</button>
+            <button class="ai-btn" onclick="stopAvatarVoice()">⛔ Stop Voice</button>
+        </div>
+
+    <!-- PDF export dependencies (UMD builds) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Local app scripts (order matters) -->
+    <script src="orbit-utils.js"></script>
+    <script src="report.js"></script>
+    <script src="main-1.js"></script>
+</body>
+</html>
